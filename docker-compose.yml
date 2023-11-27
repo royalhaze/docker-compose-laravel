@@ -1,8 +1,7 @@
 version: '3'
 
 networks:
-  laravel:
-
+  laravel_network:
 
 services:
   app:
@@ -12,54 +11,56 @@ services:
       args:
         - UID=${UID:-1000}
         - GID=${GID:-1000}
-    container_name: laravel_app
+    container_name: ${CONTAINERS_PREFIX}_app
     ports:
-      - "80:80"
+      - ${APP_PORT}:80
     volumes:
       - ./src:/var/www/html:delegated
+    environment:
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     depends_on:
       - php
       - redis
       - mysql
     networks:
-      - laravel
+      - laravel_network
 
   mysql:
     image: mariadb:10.6
     restart: unless-stopped
     tty: true
-    container_name: laravel_mysql
-    ports:
-      - "3306:3306"
+    container_name: ${CONTAINERS_PREFIX}_mysql
     environment:
-      MYSQL_DATABASE: homestead
-      MYSQL_USER: homestead
-      MYSQL_PASSWORD: secret
-      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       SERVICE_TAGS: dev
       SERVICE_NAME: mysql
     networks:
-      - laravel
+      - laravel_network
 
   php:
     build:
       context: ./dockerfiles
-      dockerfile: php.dockerfile
+      dockerfile: php.root.dockerfile
       args:
         - UID=${UID:-1000}
         - GID=${GID:-1000}
-    container_name: laravel_php
+    container_name: ${CONTAINERS_PREFIX}_php
     volumes:
       - ./src:/var/www/html:delegated
     networks:
-      - laravel
+      - laravel_network
 
   redis:
     image: redis:alpine
-    container_name: laravel_redis
+    container_name: laravel_network_redis
     restart: unless-stopped
     networks:
-      - laravel
+      - laravel_network
 
   composer:
     build:
@@ -68,14 +69,14 @@ services:
       args:
         - UID=${UID:-1000}
         - GID=${GID:-1000}
-    container_name: larave_composer
+    container_name: ${CONTAINERS_PREFIX}_composer
     volumes:
       - ./src:/var/www/html
     depends_on:
       - php
     entrypoint: [ 'composer', '--ignore-platform-reqs' ]
     networks:
-      - laravel
+      - laravel_network
 
   npm:
     image: node:current-alpine
@@ -85,7 +86,7 @@ services:
     container_name: larave_npm
     entrypoint: [ 'npm' ]
     networks:
-      - laravel
+      - laravel_network
 
   artisan:
     build:
@@ -94,18 +95,18 @@ services:
       args:
         - UID=${UID:-1000}
         - GID=${GID:-1000}
-    container_name: larave_artisan
+    container_name: ${CONTAINERS_PREFIX}_artisan
     volumes:
       - ./src:/var/www/html:delegated
     depends_on:
       - mysql
     entrypoint: [ 'php', '/var/www/html/artisan' ]
     networks:
-      - laravel
+      - laravel_network
 
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
-    container_name: laravel_pma
+    container_name: ${CONTAINERS_PREFIX}_pma
     hostname: PhpMyAdmin
     environment:
       PMA_HOST: mysql
@@ -113,7 +114,7 @@ services:
       PMA_ARBITRARY: 1
     restart: unless-stopped
     ports:
-      - 8080:80
+      - ${PMA_PORT}:80
     networks:
-      - laravel
+      - laravel_network
 
